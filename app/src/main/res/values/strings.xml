@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EPUB阅读器</string>
+    <string name="library">书架</string>
+    <string name="reader">阅读器</string>
+    <string name="settings">设置</string>
+    <string name="import_book">导入书籍</string>
+    <string name="no_books">书架为空，请导入EPUB书籍</string>
+    <string name="continue_reading">继续阅读</string>
+    <string name="add_book">添加书籍</string>
+    <string name="book_imported">书籍导入成功</string>
+    <string name="import_failed">书籍导入失败</string>
+    <string name="font_size">字体大小</string>
+    <string name="brightness">亮度</string>
+    <string name="night_mode">夜间模式</string>
+    <string name="chapter">章节</string>
+    <string name="page">页码</string>
+    <string name="loading">加载中...</string>
+    <string name="error_loading">加载失败</string>
+    <string name="delete_book">删除书籍</string>
+    <string name="confirm_delete">确定要删除这本书吗？</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确定</string>
+    <string name="about">关于</string>
+    <string name="version">版本 1.0</string>
+    <string name="author">作者未知</string>
+</resources>
+

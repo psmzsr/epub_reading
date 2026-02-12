@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+.gradle-user/
+**/build/
+
+# Local SDK path (do not share)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+
+# Kotlin / Java
+*.class
+*.log
+
+# Signing / secrets
+*.jks
+*.keystore
+keystore.properties
+
+# OS files
+.DS_Store
+Thumbs.db
+
