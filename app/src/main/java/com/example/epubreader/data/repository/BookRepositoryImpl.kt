@@ -15,29 +15,35 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 /**
- * 书籍仓库实现
+ * 基于本地 JSON 文件的仓库实现。
  */
 class BookRepositoryImpl(
     private val context: Context
 ) : BookRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** 书架列表文件。 */
     private val booksFile: File
         get() = File(context.filesDir, "books.json")
 
+    /** 阅读进度文件。 */
     private val progressFile: File
         get() = File(context.filesDir, "reading_progress.json")
 
+    /** 阅读设置文件。 */
     private val settingsFile: File
         get() = File(context.filesDir, "reading_settings.json")
 
     private val _booksFlow = MutableStateFlow<List<BookInfo>>(emptyList())
 
     init {
-        // 加载已保存的书籍
         loadBooks()
     }
 
+    /**
+     * 从本地文件加载书架数据到内存流。
+     */
     private fun loadBooks() {
         try {
             if (booksFile.exists()) {
@@ -45,28 +51,40 @@ class BookRepositoryImpl(
                 val books = json.decodeFromString<List<BookInfo>>(jsonString)
                 _booksFlow.value = books
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             _booksFlow.value = emptyList()
         }
     }
 
+    /**
+     * 将当前内存中的书架列表写回文件。
+     */
     private suspend fun saveBooks() {
         withContext(Dispatchers.IO) {
             try {
                 val jsonString = json.encodeToString(_booksFlow.value)
                 booksFile.writeText(jsonString)
-            } catch (e: Exception) {
-                // Handle error silently or log
+            } catch (_: Exception) {
+                // 按需接入统一日志系统。
             }
         }
     }
 
+    /**
+     * 返回书架数据流。
+     */
     override fun getAllBooks(): Flow<List<BookInfo>> = _booksFlow.asStateFlow()
 
+    /**
+     * 根据 bookId 获取书籍。
+     */
     override suspend fun getBook(bookId: String): BookInfo? {
         return _booksFlow.value.find { it.id == bookId }
     }
 
+    /**
+     * 新增书籍并落盘。
+     */
     override suspend fun addBook(book: BookInfo) {
         val currentBooks = _booksFlow.value.toMutableList()
         currentBooks.add(book)
@@ -74,6 +92,9 @@ class BookRepositoryImpl(
         saveBooks()
     }
 
+    /**
+     * 更新书籍并落盘。
+     */
     override suspend fun updateBook(book: BookInfo) {
         val currentBooks = _booksFlow.value.toMutableList()
         val index = currentBooks.indexOfFirst { it.id == book.id }
@@ -84,21 +105,24 @@ class BookRepositoryImpl(
         }
     }
 
+    /**
+     * 删除书籍、缓存目录和对应阅读进度。
+     */
     override suspend fun deleteBook(bookId: String) {
         val book = getBook(bookId)
         if (book != null) {
-            // 删除缓存文件
             FileUtils.cleanBookCache(book.filePath)
         }
 
         val currentBooks = _booksFlow.value.filterNot { it.id == bookId }
         _booksFlow.value = currentBooks
         saveBooks()
-
-        // 删除阅读进度
         deleteReadingProgress(bookId)
     }
 
+    /**
+     * 保存单本书阅读进度。
+     */
     override suspend fun saveReadingProgress(progress: ReadingProgress) {
         withContext(Dispatchers.IO) {
             try {
@@ -106,20 +130,26 @@ class BookRepositoryImpl(
                 progressMap[progress.bookId] = progress
                 val jsonString = json.encodeToString(progressMap)
                 progressFile.writeText(jsonString)
-            } catch (e: Exception) {
-                // Handle error silently
+            } catch (_: Exception) {
+                // 按需接入统一日志系统。
             }
         }
     }
 
+    /**
+     * 读取单本书阅读进度。
+     */
     override suspend fun getReadingProgress(bookId: String): ReadingProgress? {
         return try {
             loadProgressMap()[bookId]
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
+    /**
+     * 读取全部阅读进度映射。
+     */
     private fun loadProgressMap(): Map<String, ReadingProgress> {
         return try {
             if (progressFile.exists()) {
@@ -128,11 +158,14 @@ class BookRepositoryImpl(
             } else {
                 emptyMap()
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyMap()
         }
     }
 
+    /**
+     * 删除某本书的阅读进度记录。
+     */
     private suspend fun deleteReadingProgress(bookId: String) {
         withContext(Dispatchers.IO) {
             try {
@@ -140,23 +173,29 @@ class BookRepositoryImpl(
                 progressMap.remove(bookId)
                 val jsonString = json.encodeToString(progressMap)
                 progressFile.writeText(jsonString)
-            } catch (e: Exception) {
-                // Handle error silently
+            } catch (_: Exception) {
+                // 按需接入统一日志系统。
             }
         }
     }
 
+    /**
+     * 保存全局阅读设置。
+     */
     override suspend fun saveReadingSettings(settings: ReadingSettings) {
         withContext(Dispatchers.IO) {
             try {
                 val jsonString = json.encodeToString(settings)
                 settingsFile.writeText(jsonString)
-            } catch (e: Exception) {
-                // Handle error silently
+            } catch (_: Exception) {
+                // 按需接入统一日志系统。
             }
         }
     }
 
+    /**
+     * 读取全局阅读设置。
+     */
     override suspend fun getReadingSettings(): ReadingSettings {
         return try {
             if (settingsFile.exists()) {
@@ -165,9 +204,8 @@ class BookRepositoryImpl(
             } else {
                 ReadingSettings()
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ReadingSettings()
         }
     }
 }
-

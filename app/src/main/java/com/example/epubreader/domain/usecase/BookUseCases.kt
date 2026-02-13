@@ -3,6 +3,7 @@ package com.example.epubreader.domain.usecase
 import android.net.Uri
 import com.example.epubreader.core.util.FileUtils
 import com.example.epubreader.data.model.BookInfo
+import com.example.epubreader.data.model.EpubBook
 import com.example.epubreader.data.model.ParseResult
 import com.example.epubreader.data.model.ReadingProgress
 import com.example.epubreader.data.repository.BookRepository
@@ -15,15 +16,21 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+/**
+ * 导入一本 EPUB 到书架。
+ */
 class ImportBookUseCase(
     private val epubRepository: EpubRepository,
     private val bookRepository: BookRepository
 ) {
+    /**
+     * 解析文件并写入书架，返回领域层 Book。
+     */
     suspend operator fun invoke(uri: Uri, fileSize: Long): Result<Book> {
         return try {
             when (val parseResult = epubRepository.parseEpub(uri)) {
                 is ParseResult.Success<*> -> {
-                    val epubBook = parseResult.data as com.example.epubreader.data.model.EpubBook
+                    val epubBook = parseResult.data as EpubBook
                     val bookInfo = BookInfo(
                         id = UUID.randomUUID().toString(),
                         title = epubBook.metadata.title,
@@ -46,9 +53,15 @@ class ImportBookUseCase(
     }
 }
 
+/**
+ * 获取书架列表。
+ */
 class GetBooksUseCase(
     private val bookRepository: BookRepository
 ) {
+    /**
+     * 按最近阅读时间倒序输出 UI 需要的 Book 列表。
+     */
     operator fun invoke(): Flow<List<Book>> {
         return bookRepository.getAllBooks().map { books ->
             books.sortedByDescending { it.lastReadTime }.map { it.toDomain() }
@@ -56,17 +69,29 @@ class GetBooksUseCase(
     }
 }
 
+/**
+ * 获取单本书信息。
+ */
 class GetBookUseCase(
     private val bookRepository: BookRepository
 ) {
+    /**
+     * 根据 bookId 查询书籍并转换为领域模型。
+     */
     suspend operator fun invoke(bookId: String): Book? {
         return bookRepository.getBook(bookId)?.toDomain()
     }
 }
 
+/**
+ * 删除书籍。
+ */
 class DeleteBookUseCase(
     private val bookRepository: BookRepository
 ) {
+    /**
+     * 删除指定书籍并返回执行结果。
+     */
     suspend operator fun invoke(bookId: String): Result<Unit> {
         return try {
             bookRepository.deleteBook(bookId)
@@ -77,9 +102,15 @@ class DeleteBookUseCase(
     }
 }
 
+/**
+ * 更新阅读进度（书架汇总进度 + 细粒度章节进度）。
+ */
 class UpdateReadingProgressUseCase(
     private val bookRepository: BookRepository
 ) {
+    /**
+     * 保存章节索引与章节内滚动位置。
+     */
     suspend operator fun invoke(
         bookId: String,
         currentChapter: Int,
@@ -113,6 +144,9 @@ class UpdateReadingProgressUseCase(
     }
 }
 
+/**
+ * 数据层模型转换为领域层模型。
+ */
 private fun BookInfo.toDomain(): Book {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     val importTimeStr = dateFormat.format(Date(importTime))

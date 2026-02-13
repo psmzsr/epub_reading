@@ -54,6 +54,7 @@ import com.example.epubreader.presentation.ui.components.EpubContent
 import com.example.epubreader.presentation.ui.components.LoadingContent
 import com.example.epubreader.presentation.viewmodel.ReaderViewModel
 
+/** 阅读页：纵向滚动阅读、章节切换、目录和阅读设置。 */
 @Composable
 fun ReaderScreen(
     bookId: String,
@@ -68,11 +69,13 @@ fun ReaderScreen(
     var showControls by remember { mutableStateOf(true) }
 
     LaunchedEffect(bookId, bookPath) {
+        // 进入页面时加载书籍与阅读进度。
         viewModel.openBook(bookPath, bookId)
     }
 
     DisposableEffect(Unit) {
         onDispose {
+            // 退出页面时立即保存一次进度。
             viewModel.saveProgress()
         }
     }
@@ -86,11 +89,13 @@ fun ReaderScreen(
         uiState.readingState.totalChapters,
         uiState.fontSize
     ) {
+        // 章节变化时刷新正文。
         viewModel.getCurrentChapterContent()
     }
 
     LaunchedEffect(uiState.readingState.currentChapter, uiState.isLoading, chapterScrollState.maxValue) {
         if (uiState.isLoading) return@LaunchedEffect
+        // 按保存的百分比恢复滚动位置。
         val progress = uiState.readingState.scrollPosition.coerceIn(0f, 1f)
         val targetOffset = (chapterScrollState.maxValue * progress).toInt()
         if (chapterScrollState.value != targetOffset) {
@@ -100,6 +105,7 @@ fun ReaderScreen(
 
     LaunchedEffect(chapterScrollState.value, chapterScrollState.maxValue, uiState.isLoading) {
         if (uiState.isLoading) return@LaunchedEffect
+        // 将当前滚动值转成 0..1 的章节进度并回传 ViewModel。
         val progress = if (chapterScrollState.maxValue <= 0) {
             0f
         } else {
@@ -128,6 +134,7 @@ fun ReaderScreen(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // 顶部栏可通过点击正文隐藏/显示。
                     if (showControls) {
                         ReaderTopBar(
                             title = bookTitle,
@@ -147,11 +154,13 @@ fun ReaderScreen(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(chapterScrollState)
+                            // 点击正文切换工具栏显示状态。
                             .pointerInput(Unit) {
                                 detectTapGestures(onTap = { showControls = !showControls })
                             }
                     )
 
+                    // 底部栏负责章节切换与本章滚动进度提示。
                     if (showControls) {
                         ReaderBottomBar(
                             currentChapter = uiState.readingState.currentChapter,
@@ -195,6 +204,7 @@ fun ReaderScreen(
     }
 }
 
+/** 顶部工具栏。 */
 @Composable
 private fun ReaderTopBar(
     title: String,
@@ -244,6 +254,7 @@ private fun ReaderTopBar(
     }
 }
 
+/** 底部工具栏（章节切换 + 本章进度）。 */
 @Composable
 private fun ReaderBottomBar(
     currentChapter: Int,
@@ -300,6 +311,7 @@ private fun ReaderBottomBar(
     }
 }
 
+/** 阅读设置弹窗。 */
 @Composable
 private fun SettingsPanel(
     fontSize: Int,
@@ -374,6 +386,7 @@ private fun SettingsPanel(
     )
 }
 
+/** 主题色按钮。 */
 @Composable
 private fun ThemeButton(
     theme: ReaderTheme,
@@ -398,6 +411,7 @@ private fun ThemeButton(
     }
 }
 
+/** 目录弹窗：默认定位到当前章节附近。 */
 @Composable
 private fun ChapterListDialog(
     currentChapter: Int,

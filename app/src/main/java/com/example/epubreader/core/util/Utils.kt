@@ -7,10 +7,7 @@ import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.pdf.PdfRenderer
 import android.os.Build
-import android.os.ParcelFileDescriptor
 import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
@@ -18,13 +15,11 @@ import android.renderscript.ScriptIntrinsicBlur
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * 图像处理工具类
- */
+/** 图像相关工具。 */
 object ImageUtils {
 
     /**
-     * 加载图片并缩放到指定尺寸
+     * 按目标尺寸加载并下采样图片，避免大图直接解码导致内存峰值过高。
      */
     fun loadImage(path: String, maxWidth: Int, maxHeight: Int): Bitmap? {
         val file = File(path)
@@ -47,14 +42,12 @@ object ImageUtils {
             }
 
             BitmapFactory.decodeFile(path, options)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 
-    /**
-     * 应用灰度滤镜（用于夜间模式）
-     */
+    /** 灰度滤镜。 */
     fun applyGrayscale(bitmap: Bitmap): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
@@ -70,20 +63,20 @@ object ImageUtils {
         return result
     }
 
-    /**
-     * 应用反色滤镜（用于阅读器背景）
-     */
+    /** 反色滤镜。 */
     fun applyInvertColors(bitmap: Bitmap): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         val paint = Paint()
 
-        val colorMatrix = ColorMatrix(floatArrayOf(
-            -1f, 0f, 0f, 0f, 255f,
-            0f, -1f, 0f, 0f, 255f,
-            0f, 0f, -1f, 0f, 255f,
-            0f, 0f, 0f, 1f, 0f
-        ))
+        val colorMatrix = ColorMatrix(
+            floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
 
         val filter = ColorMatrixColorFilter(colorMatrix)
         paint.colorFilter = filter
@@ -93,7 +86,7 @@ object ImageUtils {
     }
 
     /**
-     * 模糊图片
+     * 轻量模糊：先缩小再模糊再放大，平衡效果与性能。
      */
     fun blurImage(context: Context, input: Bitmap, radius: Float = 25f): Bitmap? {
         if (radius < 1f || radius > 25f) return input
@@ -101,9 +94,7 @@ object ImageUtils {
         return try {
             val width = input.width
             val height = input.height
-
             val scaledDown = Bitmap.createScaledBitmap(input, width / 4, height / 4, true)
-
             val output = Bitmap.createBitmap(scaledDown)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -123,28 +114,19 @@ object ImageUtils {
                 outputAlloc.destroy()
                 blur.destroy()
                 script.destroy()
-            } else {
-                // 降级方案：使用简单的缩放模糊
-                output
             }
 
             val result = Bitmap.createScaledBitmap(output, width, height, true)
-            if (output != result) {
-                output.recycle()
-            }
-            if (scaledDown != result) {
-                scaledDown.recycle()
-            }
+            if (output != result) output.recycle()
+            if (scaledDown != result) scaledDown.recycle()
 
             result
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             input
         }
     }
 
-    /**
-     * 保存图片到缓存目录
-     */
+    /** 将图片写入应用缓存目录。 */
     fun saveToCache(context: Context, bitmap: Bitmap, filename: String): String? {
         return try {
             val cacheDir = context.cacheDir
@@ -153,20 +135,16 @@ object ImageUtils {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             file.absolutePath
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
 }
 
-/**
- * 文件工具类
- */
+/** 文件相关工具。 */
 object FileUtils {
 
-    /**
-     * 获取文件大小格式化字符串
-     */
+    /** 将字节大小格式化为可读字符串。 */
     fun formatFileSize(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
         val kb = bytes / 1024.0
@@ -177,9 +155,7 @@ object FileUtils {
         return String.format("%.1f GB", gb)
     }
 
-    /**
-     * 清理书籍的临时文件
-     */
+    /** 删除单本书籍的解压缓存目录。 */
     fun cleanBookCache(bookPath: String) {
         val bookDir = File(bookPath)
         if (bookDir.exists()) {
@@ -187,13 +163,10 @@ object FileUtils {
         }
     }
 
-    /**
-     * 获取EPUB文件的临时解压目录
-     */
+    /** 获取书籍解压目录路径。 */
     fun getBookExtractDir(context: Context, bookId: String): File {
         val cacheDir = File(context.cacheDir, "books")
         cacheDir.mkdirs()
         return File(cacheDir, bookId)
     }
 }
-

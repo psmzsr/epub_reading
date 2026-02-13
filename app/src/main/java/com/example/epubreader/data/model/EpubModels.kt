@@ -1,12 +1,6 @@
 package com.example.epubreader.data.model
 
-/**
- * EPUB解析相关的数据模型
- */
-
-/**
- * EPUB元数据
- */
+/** EPUB 元数据。 */
 data class EpubMetadata(
     val title: String,
     val author: String,
@@ -17,9 +11,7 @@ data class EpubMetadata(
     val identifier: String
 )
 
-/**
- * EPUB spine项目（阅读顺序）
- */
+/** spine 条目：定义阅读顺序。 */
 data class SpineItem(
     val id: String,
     val href: String,
@@ -27,9 +19,7 @@ data class SpineItem(
     val title: String
 )
 
-/**
- * EPUB目录项
- */
+/** TOC 目录节点（支持树形层级）。 */
 data class NavPoint(
     val id: String,
     val playOrder: Int,
@@ -39,9 +29,7 @@ data class NavPoint(
     val children: List<NavPoint> = emptyList()
 )
 
-/**
- * 完整的EPUB结构
- */
+/** 完整 EPUB 解析结果。 */
 data class EpubBook(
     val metadata: EpubMetadata,
     val spine: List<SpineItem>,
@@ -50,11 +38,8 @@ data class EpubBook(
     val extractedPath: String
 )
 
-/**
- * 解析结果
- */
+/** 统一解析返回结构。 */
 sealed class ParseResult<out T> {
     data class Success<T>(val data: T) : ParseResult<T>()
     data class Error(val message: String, val exception: Throwable? = null) : ParseResult<Nothing>()
 }
-

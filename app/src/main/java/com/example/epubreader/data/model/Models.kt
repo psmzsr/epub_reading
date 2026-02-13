@@ -3,7 +3,7 @@ package com.example.epubreader.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * EPUB书籍信息数据类
+ * 书籍基础信息（持久化到 books.json）。
  */
 @Serializable
 data class BookInfo(
@@ -21,7 +21,7 @@ data class BookInfo(
 )
 
 /**
- * 阅读设置
+ * 阅读设置（全局级别，持久化到 reading_settings.json）。
  */
 @Serializable
 data class ReadingSettings(
@@ -32,7 +32,7 @@ data class ReadingSettings(
 )
 
 /**
- * 阅读进度
+ * 阅读进度（按 bookId 粒度，持久化到 reading_progress.json）。
  */
 @Serializable
 data class ReadingProgress(
@@ -41,4 +41,3 @@ data class ReadingProgress(
     val scrollPosition: Float,
     val timestamp: Long
 )
-

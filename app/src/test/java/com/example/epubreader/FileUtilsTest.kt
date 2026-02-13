@@ -1,10 +1,9 @@
 package com.example.epubreader.core.util
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
-/**
- * FileUtils单元测试
- */
+
+/** FileUtils 单元测试。 */
 class FileUtilsTest {
     @Test
     fun `formatFileSize formats bytes correctly`() {
@@ -17,4 +16,3 @@ class FileUtilsTest {
         assertEquals("1.0 GB", FileUtils.formatFileSize(1024L * 1024 * 1024))
     }
 }
-

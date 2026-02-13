@@ -12,6 +12,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/** 章节正文渲染组件（纯文本模式）。 */
 @Composable
 fun EpubContent(
     textContent: String,
@@ -27,6 +28,7 @@ fun EpubContent(
             .padding(horizontal = 20.dp, vertical = 24.dp)
     ) {
         Text(
+            // 空白章节时给出占位文案，避免白屏体验。
             text = textContent.ifBlank { "当前页没有可显示内容" },
             style = TextStyle(
                 color = textColor,

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.example.epubreader.domain.model.Book
 import java.io.File
 
+/** 单本书籍卡片。 */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookCard(
@@ -152,6 +153,7 @@ fun BookCard(
     }
 }
 
+/** 空书架占位。 */
 @Composable
 fun EmptyLibraryContent(
     onImportClick: () -> Unit,
@@ -192,6 +194,7 @@ fun EmptyLibraryContent(
     }
 }
 
+/** 通用加载态。 */
 @Composable
 fun LoadingContent(
     message: String = "加载中...",
@@ -212,6 +215,7 @@ fun LoadingContent(
     }
 }
 
+/** 通用错误态。 */
 @Composable
 fun ErrorContent(
     message: String,

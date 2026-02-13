@@ -22,6 +22,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+/**
+ * 阅读页 ViewModel：
+ * - 解析并打开书籍
+ * - 管理章节/滚动/主题/字体状态
+ * - 持久化阅读进度和设置
+ */
 class ReaderViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tag = "EpubDebug"
@@ -46,6 +52,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     private var lastAutoSavedScroll = -1f
     private var lastAutoSaveAt = 0L
 
+    /** 打开指定书籍，并恢复上次阅读位置。 */
     fun openBook(bookPath: String, bookId: String) {
         viewModelScope.launch {
             Log.d(tag, "openBook start: bookId=$bookId, bookPath=$bookPath")
@@ -85,6 +92,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                         return@launch
                     }
 
+                    // 优先使用 TOC 标题，不足时回退到 spine/序号标题。
                     val chapterTitles = buildChapterTitles(epubBook, readableChapterIndices)
                     val chapterIndex = savedProgress?.currentChapter
                         ?.coerceIn(0, readableChapterIndices.lastIndex)
@@ -126,6 +134,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 跳转到指定逻辑章节，并恢复该章节的滚动位置。 */
     fun goToChapter(chapterIndex: Int) {
         val state = _uiState.value.readingState
         if (chapterIndex !in 0 until state.totalChapters) {
@@ -152,6 +161,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         Log.d(tag, "goToChapter: index=$chapterIndex, title=$title, restoredScroll=$restoredScroll")
     }
 
+    /** 下一章。 */
     fun nextChapter() {
         val state = _uiState.value.readingState
         if (state.currentChapter < state.totalChapters - 1) {
@@ -161,6 +171,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 上一章。 */
     fun previousChapter() {
         val state = _uiState.value.readingState
         if (state.currentChapter > 0) {
@@ -170,6 +181,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 更新当前章节滚动进度（0..1）。 */
     fun updateScrollPosition(position: Float) {
         val normalized = position.coerceIn(0f, 1f)
         val state = _uiState.value.readingState
@@ -180,6 +192,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         maybePersistProgress(state.currentChapter, normalized)
     }
 
+    /** 增大字号。 */
     fun increaseFontSize() {
         val current = _uiState.value.fontSize
         if (current >= 32) return
@@ -188,6 +201,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         saveFontSize(next)
     }
 
+    /** 减小字号。 */
     fun decreaseFontSize() {
         val current = _uiState.value.fontSize
         if (current <= 12) return
@@ -196,6 +210,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         saveFontSize(next)
     }
 
+    /** 切换夜间模式。 */
     fun toggleNightMode() {
         val next = !_uiState.value.isNightMode
         _uiState.value = _uiState.value.copy(isNightMode = next)
@@ -205,11 +220,13 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 切换阅读主题。 */
     fun selectTheme(theme: ReaderTheme) {
         _uiState.value = _uiState.value.copy(selectedTheme = theme)
         Log.d(tag, "selectTheme: $theme")
     }
 
+    /** 异步保存字号设置。 */
     private fun saveFontSize(size: Int) {
         viewModelScope.launch {
             saveReadingSettingsUseCase(fontSize = size)
@@ -217,6 +234,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 立即保存当前进度（页面退出/切后台时调用）。 */
     fun saveProgress() {
         val state = _uiState.value.readingState
         chapterScrollMemory[state.currentChapter] = state.scrollPosition
@@ -227,14 +245,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    /** 兼容某些页面先传 bookId 后打开的场景。 */
     fun setBookId(bookId: String) {
         _uiState.value = _uiState.value.copy(currentBookId = bookId)
     }
 
+    /** 获取当前章节正文。 */
     fun getCurrentChapterContent(): String {
         return getChapterContent(_uiState.value.readingState.currentChapter)
     }
 
+    /** 按逻辑章节索引读取正文（带内存缓存）。 */
     fun getChapterContent(chapterIndex: Int): String {
         val book = currentBook ?: run {
             Log.w(tag, "getChapterContent: currentBook is null")
@@ -256,6 +277,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         return content
     }
 
+    /** 自动保存策略：章节变化、滚动变化明显或时间阈值到达时落盘。 */
     private fun maybePersistProgress(chapterIndex: Int, scrollPosition: Float) {
         val now = System.currentTimeMillis()
         val chapterChanged = chapterIndex != lastAutoSavedChapter
@@ -269,6 +291,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         lastAutoSaveAt = now
     }
 
+    /** 实际落盘动作。 */
     private fun persistProgress(chapterIndex: Int, scrollPosition: Float, reason: String) {
         val bookId = _uiState.value.currentBookId ?: return
         viewModelScope.launch {
@@ -284,6 +307,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * 构建“可阅读章节索引”：
+     * 优先使用 TOC 与 spine 的映射，减少目录和正文章节数不一致问题。
+     */
     private fun buildReadableChapterIndex(epubBook: EpubBook): List<Int> {
         val rawIndices = epubBook.spine.indices.toList()
         if (rawIndices.isEmpty()) return emptyList()
@@ -320,6 +347,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         return result
     }
 
+    /** 构建目录标题列表，按“TOC > spine > 默认序号”优先级回退。 */
     private fun buildChapterTitles(epubBook: EpubBook, chapterMap: List<Int>): List<String> {
         val tocEntries = flattenToc(epubBook.toc)
         val tocTitleMap = buildTocTitleMap(tocEntries)
@@ -358,6 +386,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 简单判断字符串是否像文件名，避免目录标题显示成路径。 */
     private fun looksLikeFileName(value: String): Boolean {
         val normalized = value.trim().lowercase()
         return normalized.endsWith(".xhtml") ||
@@ -367,6 +396,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             normalized.contains("\\")
     }
 
+    /** 为 href 建立标题映射，兼容完整路径和文件名两种键。 */
     private fun buildTocTitleMap(tocEntries: List<TocEntry>): Map<String, String> {
         val result = mutableMapOf<String, String>()
         tocEntries.forEach { entry ->
@@ -379,9 +409,13 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         return result
     }
 
+    /** 将树形 TOC 展开为平铺列表，便于映射和去重。 */
     private fun flattenToc(toc: List<NavPoint>): List<TocEntry> {
         val result = mutableListOf<TocEntry>()
 
+        /**
+         * collect 方法。 
+         */
         fun collect(nodes: List<NavPoint>) {
             nodes.forEach { node ->
                 val href = normalizeHref(node.href)
@@ -398,6 +432,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         return result.distinctBy { it.href }
     }
 
+    /** 统一规范化 href：解码、去锚点、去 ./ 前缀。 */
     private fun normalizeHref(href: String): String {
         return Uri.decode(href)
             .substringBefore('#')
@@ -405,6 +440,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             .trim()
     }
 
+    /** ViewModel 销毁前兜底保存一次进度。 */
     override fun onCleared() {
         saveProgress()
         super.onCleared()
@@ -416,6 +452,7 @@ private data class TocEntry(
     val title: String
 )
 
+/** 阅读页 UI 状态聚合。 */
 data class ReaderUiState(
     val readingState: ReadingState = ReadingState.initial(),
     val fontSize: Int = 18,
@@ -425,9 +462,11 @@ data class ReaderUiState(
     val currentBookId: String? = null,
     val chapterTitles: List<String> = emptyList()
 ) {
+    /** 是否有可阅读内容。 */
     val hasContent: Boolean
         get() = readingState.totalChapters > 0
 
+    /** 顶部/底部可复用进度文案。 */
     val progressText: String
         get() = "${readingState.currentChapter + 1} / ${readingState.totalChapters}"
 }

@@ -8,6 +8,9 @@ import com.example.epubreader.data.model.EpubBook
 import com.example.epubreader.data.model.ParseResult
 import java.io.File
 
+/**
+ * EPUB 仓库实现：负责把 Uri/Path 统一交给解析器，并补充日志与容错。
+ */
 class EpubRepositoryImpl(
     private val context: Context
 ) : EpubRepository {
@@ -15,15 +18,20 @@ class EpubRepositoryImpl(
     private val tag = "EpubDebug"
     private val parser = EpubParser()
 
+    /**
+     * parseEpub 方法。 
+     */
     override suspend fun parseEpub(uri: Uri): ParseResult<EpubBook> {
         Log.d(tag, "parseEpub(uri) start: $uri")
 
+        // 通过 ContentResolver 读取外部文件流。
         val inputStream = context.contentResolver.openInputStream(uri)
             ?: run {
                 Log.e(tag, "parseEpub(uri) failed: openInputStream returns null")
                 return ParseResult.Error("无法打开文件")
             }
 
+        // 先复制到本地临时文件，便于 ZipFile 等 API 按路径访问。
         val tempFile = File(context.cacheDir, "temp_${System.currentTimeMillis()}.epub")
         runCatching {
             inputStream.use { input ->
@@ -50,6 +58,9 @@ class EpubRepositoryImpl(
         return result
     }
 
+    /**
+     * parseEpubFromPath 方法。 
+     */
     override suspend fun parseEpubFromPath(path: String): ParseResult<EpubBook> {
         Log.d(tag, "parseEpubFromPath start: $path")
         val file = File(path)
@@ -58,6 +69,7 @@ class EpubRepositoryImpl(
             return ParseResult.Error("文件不存在：$path")
         }
 
+        // 支持“原始 epub 文件”和“已解压目录”两种输入形态。
         val result = if (file.isDirectory) {
             Log.d(tag, "parseEpubFromPath detected extracted directory")
             parser.parseExtractedEpub(file)

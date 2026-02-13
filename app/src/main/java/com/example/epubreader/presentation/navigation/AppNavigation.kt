@@ -10,21 +10,19 @@ import androidx.navigation.navArgument
 import com.example.epubreader.presentation.ui.screens.LibraryScreen
 import com.example.epubreader.presentation.ui.screens.ReaderScreen
 
-/**
- * 导航路由
- */
+/** 页面路由定义。 */
 sealed class Screen(val route: String) {
     data object Library : Screen("library")
+
     data object Reader : Screen("reader/{bookId}/{bookPath}/{bookTitle}") {
+        /** 路由参数统一编码，避免书名/路径中的特殊字符破坏路由。 */
         fun createRoute(bookId: String, bookPath: String, bookTitle: String): String {
             return "reader/${Uri.encode(bookId)}/${Uri.encode(bookPath)}/${Uri.encode(bookTitle)}"
         }
     }
 }
 
-/**
- * 主导航图
- */
+/** 应用主导航图。 */
 @Composable
 fun AppNavigation(
     navController: NavHostController
@@ -33,7 +31,7 @@ fun AppNavigation(
         navController = navController,
         startDestination = Screen.Library.route
     ) {
-        // 书架页面
+        // 书架页：点击书籍后跳转到阅读页。
         composable(Screen.Library.route) {
             LibraryScreen(
                 onBookClick = { book ->
@@ -48,7 +46,7 @@ fun AppNavigation(
             )
         }
 
-        // 阅读器页面
+        // 阅读页：从路由中恢复书籍上下文参数。
         composable(
             route = Screen.Reader.route,
             arguments = listOf(
@@ -70,4 +68,3 @@ fun AppNavigation(
         }
     }
 }
-

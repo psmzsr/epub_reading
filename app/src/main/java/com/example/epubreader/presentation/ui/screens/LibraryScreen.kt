@@ -48,6 +48,7 @@ import com.example.epubreader.presentation.ui.components.EmptyLibraryContent
 import com.example.epubreader.presentation.ui.components.LoadingContent
 import com.example.epubreader.presentation.viewmodel.LibraryViewModel
 
+/** 书架页：导入 EPUB、展示书单、删除书籍。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
@@ -64,6 +65,7 @@ fun LibraryScreen(
 
     var showDeleteDialog by remember { mutableStateOf<Book?>(null) }
 
+    /** 统一处理文件选择回调，兼容持久权限与普通权限。 */
     fun handlePickedUri(uri: Uri, persistPermission: Boolean) {
         Log.i(tag, "file picked: uri=$uri, persist=$persistPermission")
 
@@ -110,10 +112,14 @@ fun LibraryScreen(
         handlePickedUri(uri, persistPermission = true)
     }
 
+    /**
+     * launchPicker 方法。 
+     */
     fun launchPicker() {
         runCatching {
             openDocumentLauncher.launch(mimeTypes)
         }.onFailure { error ->
+            // 少数系统机型 OpenDocument 可能异常，回退到更宽松的 GetContent。
             Log.e(tag, "OpenDocument launch failed, fallback to GetContent", error)
             Toast.makeText(context, "系统文件选择器异常，尝试兼容模式", Toast.LENGTH_SHORT).show()
             getContentLauncher.launch("*/*")
@@ -131,10 +137,14 @@ fun LibraryScreen(
         }
     }
 
+    /**
+     * pickEpub 方法。 
+     */
     fun pickEpub() {
         Log.i(tag, "import button clicked, sdk=${Build.VERSION.SDK_INT}")
         Toast.makeText(context, "开始选择 EPUB 文件", Toast.LENGTH_SHORT).show()
 
+        // Android 10 之前读取外部存储通常仍需运行时权限。
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             val permission = Manifest.permission.READ_EXTERNAL_STORAGE
             if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
@@ -166,9 +176,12 @@ fun LibraryScreen(
                 .padding(paddingValues)
         ) {
             when {
+                // 首屏加载态。
                 uiState.isLoading -> LoadingContent(message = "正在加载书籍...")
+                // 空书架态。
                 uiState.isEmpty -> EmptyLibraryContent(onImportClick = ::pickEpub)
                 else -> {
+                    // 列表态。
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
@@ -185,12 +198,14 @@ fun LibraryScreen(
                 }
             }
 
+            // 导入中的全屏 loading。
             if (uiState.isImporting) {
                 LoadingContent(message = "正在导入...")
             }
         }
     }
 
+    // 一次性错误消息。
     uiState.importError?.let { error ->
         LaunchedEffect(error) {
             snackbarHostState.showSnackbar(error)
@@ -198,6 +213,7 @@ fun LibraryScreen(
         }
     }
 
+    // 一次性成功消息。
     if (uiState.importSuccess) {
         LaunchedEffect(uiState.importSuccess) {
             val title = uiState.lastImportedBook?.title.orEmpty()
@@ -206,6 +222,7 @@ fun LibraryScreen(
         }
     }
 
+    // 长按删除确认弹窗。
     showDeleteDialog?.let { book ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },

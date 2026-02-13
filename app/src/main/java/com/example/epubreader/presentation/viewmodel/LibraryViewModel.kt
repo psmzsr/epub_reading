@@ -15,6 +15,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * 书架页 ViewModel：
+ * - 拉取书架列表
+ * - 处理导入/删除动作
+ * - 暴露页面所需 UI 状态
+ */
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tag = "EpubDebug"
@@ -33,6 +39,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         loadBooks()
     }
 
+    /** 持续订阅书架列表变化。 */
     private fun loadBooks() {
         viewModelScope.launch {
             getBooksUseCase().collect { books ->
@@ -45,6 +52,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** 导入一本新书。 */
     fun importBook(uri: Uri, fileSize: Long) {
         viewModelScope.launch {
             Log.d(tag, "importBook click: uri=$uri, size=$fileSize")
@@ -69,6 +77,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** 删除书架中的书籍。 */
     fun deleteBook(bookId: String) {
         viewModelScope.launch {
             Log.d(tag, "deleteBook click: id=$bookId")
@@ -77,6 +86,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** 清空一次性导入提示状态，避免重复弹消息。 */
     fun resetImportState() {
         _uiState.value = _uiState.value.copy(
             importSuccess = false,
@@ -86,6 +96,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     }
 }
 
+/** 书架页面状态。 */
 data class LibraryUiState(
     val books: List<Book> = emptyList(),
     val isLoading: Boolean = true,
@@ -94,6 +105,7 @@ data class LibraryUiState(
     val importError: String? = null,
     val lastImportedBook: Book? = null
 ) {
+    /** 空态判定。 */
     val isEmpty: Boolean
         get() = books.isEmpty() && !isLoading
 }
